@@ -1,0 +1,50 @@
+import pandas as pd
+import math
+from Bio.SeqUtils.ProtParam import ProteinAnalysis
+
+def calc_features(sequence):
+    # Define the set of nonpolar residues
+    nonpolar_residues = set('ACGILMFPWYV')
+    # Calculate the percentage of nonpolar residues
+    NP = sum(1 for aa in sequence if aa in nonpolar_residues) / len(sequence)
+    # Calculate the presence of Trp and Tyr
+    W = 1 if 'W' in sequence else 0
+    Y = 1 if sequence.count('Y') >= 2 else 0
+    # Calculate the isoelectric point
+    protein_analysis = ProteinAnalysis(sequence)
+    IP_val = protein_analysis.isoelectric_point()
+    IP = 1 if IP_val > 10 else 0
+    return NP, W, Y, IP
+
+def calc_half_life(sequence):
+    # Calculate the peptide features
+    NP, W, Y, IP = calc_features(sequence)
+    # Calculate the natural log of the half-life
+    ln_t_half = 2.226 + (0.053 * NP * 100) - (1.515 * W) + (1.290 * Y) - (1.052 * IP)
+    # Convert to the half-life
+    t_half = math.exp(ln_t_half)
+    return t_half
+
+def calculate_half_life_for_csv(input_csv, output_csv):
+    # Read the input CSV file
+    df = pd.read_csv(input_csv)
+    
+    # Ensure the first column contains sequences
+    sequences = df.iloc[:, 0].tolist()
+    
+    # Calculate half-life for each sequence
+    half_lives = [calc_half_life(seq) for seq in sequences]
+    
+    # Add half-life results to the DataFrame
+    df['Half_Life'] = half_lives
+    
+    # Save the results to a new CSV file
+    df.to_csv(output_csv, index=False)
+
+if __name__ == "__main__":
+    # Input and output file names
+    input_csv = 'peptides.csv'  # Replace with your input CSV file path
+    output_csv = 'peptides_with_half_life.csv'  # Replace with your desired output CSV file path
+    
+    # Calculate half-life for sequences in the input CSV and save to the output CSV
+    calculate_half_life_for_csv(input_csv, output_csv)
